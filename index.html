@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支出管理付きカメラアプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            height: auto;
+            background-color: #000;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            /* モバイル対応の調整 */
+            object-fit: cover;
+            object-position: center;
+        }
+
+        #photoPreview {
+            width: 100%;
+            height: auto;
+            background-color: #f3f4f6;
+            border-radius: 1rem;
+            display: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-blue {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-green {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .btn-gray {
+            background-color: #6b7280;
+            color: white;
+        }
+        
+        .btn:disabled {
+            background-color: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .form-group {
+            text-align: left;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #4b5563;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        .expense-list {
+            text-align: left;
+            margin-top: 1.5rem;
+        }
+
+        .expense-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .expense-item:last-child {
+            border-bottom: none;
+        }
+        
+        .expense-details {
+            flex: 1;
+        }
+        
+        .expense-details p {
+            margin: 0;
+            color: #4b5563;
+        }
+        
+        .scanned-text-container {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px dashed #e5e7eb;
+            margin-bottom: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+        
+        .scanned-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.5rem 0;
+        }
+        
+        .scanned-item:last-child {
+            border-bottom: none;
+        }
+        
+        .scanned-item input {
+            background-color: transparent;
+            border: none;
+            padding: 0.25rem;
+            width: calc(50% - 0.5rem);
+        }
+
+        /* カスタムメッセージボックスのスタイル */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            text-align: center;
+            display: none;
+        }
+
+        .message-box button {
+            margin-top: 1rem;
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+        }
+        
+        #countdownOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 5rem;
+            font-weight: bold;
+            border-radius: 1rem;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">支出管理付きカメラアプリ</h1>
+        
+        <!-- カメラとプレビューセクション -->
+        <div id="cameraSection">
+            <div style="position: relative;">
+                <video id="cameraFeed" autoplay playsinline></video>
+                <div id="countdownOverlay"></div>
+            </div>
+            <img id="photoPreview" alt="撮影した写真">
+            <canvas id="photoCanvas" class="hidden"></canvas>
+            <div class="button-group">
+                <button id="startButton" class="btn btn-blue">
+                    <i class="fas fa-video"></i> カメラを開始
+                </button>
+                <button id="captureButton" class="btn btn-green" disabled>
+                    <i class="fas fa-camera"></i> 撮影
+                </button>
+            </div>
+        </div>
+
+        <!-- 支出入力フォーム -->
+        <div id="expenseFormSection" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800">支出の入力</h2>
+            
+            <div class="form-group">
+                <label for="scannedText">スキャン結果（編集可能）</label>
+                <textarea id="scannedText" class="w-full h-40 p-2 border rounded-md"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="amountInput">合計金額 (円)</label>
+                <input type="number" id="amountInput" placeholder="例: 1500" class="w-full rounded-md border p-2">
+            </div>
+            <div class="form-group">
+                <label for="categoryInput">カテゴリ</label>
+                <select id="categoryInput" class="w-full rounded-md border p-2">
+                    <option value="食費">食費</option>
+                    <option value="日用品">日用品</option>
+                    <option value="交通費">交通費</option>
+                    <option value="娯楽費">娯楽費</option>
+                    <option value="その他">その他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dateInput">日付</label>
+                <input type="date" id="dateInput" class="w-full rounded-md border p-2">
+            </div>
+            <div class="button-group">
+                <button id="scanButton" class="btn btn-blue">
+                    <i class="fas fa-receipt"></i> レシートをスキャン
+                </button>
+                <button id="saveButton" class="btn btn-green">
+                    <i class="fas fa-save"></i> 支出を保存
+                </button>
+                <button id="retakeButton" class="btn btn-gray">
+                    <i class="fas fa-undo"></i> 撮り直し
+                </button>
+            </div>
+            <div id="loadingIndicator" class="hidden mt-4 text-gray-500">
+                <i class="fas fa-spinner fa-spin"></i> スキャン中...
+            </div>
+        </div>
+        
+        <!-- 支出リスト -->
+        <div id="expenseListSection" class="expense-list">
+            <h2 class="text-2xl font-bold text-gray-800">支出履歴</h2>
+            <div id="expensesList" class="mt-4">
+                <!-- 支出アイテムはここに動的に追加されます -->
+            </div>
+        </div>
+    </div>
+
+    <!-- カスタムメッセージボックス -->
+    <div id="messageBox" class="message-box">
+        <p id="messageText"></p>
+        <button id="closeMessageButton">閉じる</button>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // グローバル変数
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const apiKey = "";
+        
+        // DOM要素の取得
+        const startButton = document.getElementById('startButton');
+        const captureButton = document.getElementById('captureButton');
+        const scanButton = document.getElementById('scanButton');
+        const saveButton = document.getElementById('saveButton');
+        const retakeButton = document.getElementById('retakeButton');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const photoPreview = document.getElementById('photoPreview');
+        const photoCanvas = document.getElementById('photoCanvas');
+        const context = photoCanvas.getContext('2d');
+        const expenseFormSection = document.getElementById('expenseFormSection');
+        const cameraSection = document.getElementById('cameraSection');
+        const expensesList = document.getElementById('expensesList');
+        const amountInput = document.getElementById('amountInput');
+        const categoryInput = document.getElementById('categoryInput');
+        const dateInput = document.getElementById('dateInput');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageButton = document.getElementById('closeMessageButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const scannedTextElement = document.getElementById('scannedText');
+        const countdownOverlay = document.getElementById('countdownOverlay');
+
+        let stream;
+        let db, auth, userId;
+        
+        // Base64からArrayBufferへの変換
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // メッセージボックスを表示する関数
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.style.display = 'block';
+        }
+
+        // メッセージボックスを非表示にする関数
+        closeMessageButton.addEventListener('click', () => {
+            messageBox.style.display = 'none';
+        });
+
+        // Firebase初期化と認証
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        setLogLevel('debug');
+        
+        // 認証処理
+        async function authenticate() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                console.log("Firebase Auth Ready. User ID:", userId);
+                setupExpenseListener();
+            } catch(e) {
+                console.error("Authentication failed:", e);
+                // カスタムトークン認証に失敗した場合、匿名認証にフォールバック
+                try {
+                    await signInAnonymously(auth);
+                    userId = auth.currentUser.uid;
+                    console.log("Firebase Auth Ready. User ID:", userId);
+                    setupExpenseListener();
+                } catch (anonError) {
+                    console.error("Anonymous sign-in failed:", anonError);
+                    showMessageBox("認証に失敗しました。");
+                }
+            }
+        }
+        
+        authenticate();
+
+        // カメラの開始
+        startButton.addEventListener('click', async () => {
+            try {
+                // 背面カメラを優先し、反転を防ぐ
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+                cameraFeed.srcObject = stream;
+                cameraFeed.style.display = 'block';
+                photoPreview.style.display = 'none';
+                startButton.classList.add('hidden');
+                captureButton.classList.remove('hidden');
+                captureButton.disabled = false;
+                expenseFormSection.classList.add('hidden');
+                cameraSection.classList.remove('hidden');
+            } catch (err) {
+                console.error("カメラへのアクセスに失敗しました: ", err);
+                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    showMessageBox("カメラの使用許可がありません。ブラウザの設定から許可してください。");
+                } else {
+                    showMessageBox("カメラにアクセスできませんでした。");
+                }
+            }
+        });
+        
+        // 撮影
+        captureButton.addEventListener('click', () => {
+            let countdown = 3;
+            countdownOverlay.style.display = 'flex';
+            countdownOverlay.textContent = countdown;
+            captureButton.disabled = true;
+
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownOverlay.textContent = countdown;
+                } else {
+                    clearInterval(timer);
+                    countdownOverlay.style.display = 'none';
+                    captureButton.disabled = false;
+                    
+                    photoCanvas.width = cameraFeed.videoWidth;
+                    photoCanvas.height = cameraFeed.videoHeight;
+                    context.drawImage(cameraFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+                    
+                    // 画像の前処理: グレースケールとコントラスト強調
+                    const imageData = context.getImageData(0, 0, photoCanvas.width, photoCanvas.height);
+                    const data = imageData.data;
+                    const contrast = 1.5; // 1.0が通常
+                    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        
+                        // コントラスト調整
+                        const newGray = factor * (gray - 128) + 128;
+
+                        data[i] = newGray;
+                        data[i + 1] = newGray;
+                        data[i + 2] = newGray;
+                    }
+                    context.putImageData(imageData, 0, 0);
+
+                    const imageDataUrl = photoCanvas.toDataURL('image/jpeg');
+                    photoPreview.src = imageDataUrl;
+                    photoPreview.style.display = 'block';
+                    cameraFeed.style.display = 'none';
+                    
+                    // ストリームを停止
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+
+                    // UIを切り替え
+                    cameraSection.classList.add('hidden');
+                    expenseFormSection.classList.remove('hidden');
+                }
+            }, 1000);
+        });
+        
+        // レシートのスキャン
+        scanButton.addEventListener('click', async () => {
+            if (!photoPreview.src) {
+                showMessageBox("先に写真を撮影してください。");
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            scanButton.disabled = true;
+
+            const base64Data = photoPreview.src.split(',')[1];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const prompt = `
+                レシート画像に書かれているテキストをすべて抽出してください。
+                他のテキストや説明は一切含めないでください。
+            `;
+            
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType: 'image/jpeg', data: base64Data } }
+                    ]
+                }],
+            };
+            
+            let attempts = 0;
+            const maxAttempts = 3;
+            const baseDelay = 1000;
+
+            const fetchData = async () => {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API response was not ok: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                        const scannedText = result.candidates[0].content.parts[0].text;
+                        scannedTextElement.value = scannedText;
+                        showMessageBox("スキャンが完了しました。レシートの内容を確認し、必要に応じて編集してください。");
+
+                    } else {
+                        throw new Error("API response was malformed or empty.");
+                    }
+
+                } catch (error) {
+                    console.error('OCR scan failed:', error);
+                    if (attempts < maxAttempts) {
+                        attempts++;
+                        const delay = baseDelay * (2 ** (attempts - 1));
+                        console.log(`Retrying in ${delay / 1000} seconds...`);
+                        setTimeout(fetchData, delay);
+                    } else {
+                        showMessageBox("スキャンに失敗しました。手動で入力してください。");
+                    }
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                    scanButton.disabled = false;
+                }
+            };
+
+            fetchData();
+        });
+
+        // 支出の保存
+        saveButton.addEventListener('click', async () => {
+            const amount = amountInput.value;
+            const category = categoryInput.value;
+            const date = dateInput.value;
+            const imageData = photoPreview.src;
+            const scannedText = scannedTextElement.value;
+
+            if (!amount || !category || !date) {
+                showMessageBox("すべてのフィールドを入力してください。");
+                return;
+            }
+
+            // Firestoreにデータを追加
+            try {
+                const collectionPath = `/artifacts/${appId}/users/${userId}/expenses`;
+                await addDoc(collection(db, collectionPath), {
+                    amount: parseInt(amount, 10),
+                    category: category,
+                    date: date,
+                    receiptImage: imageData,
+                    rawReceiptText: scannedText,
+                    createdAt: serverTimestamp()
+                });
+
+                // 保存後、フォームをリセット
+                amountInput.value = '';
+                dateInput.value = '';
+                photoPreview.src = '';
+                scannedTextElement.value = '';
+                
+                // カメラセクションに戻る
+                expenseFormSection.classList.add('hidden');
+                cameraSection.classList.remove('hidden');
+                startButton.classList.remove('hidden');
+                captureButton.classList.add('hidden');
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showMessageBox("データの保存に失敗しました。");
+            }
+        });
+
+        // 撮り直し
+        retakeButton.addEventListener('click', () => {
+            photoPreview.style.display = 'none';
+            cameraFeed.style.display = 'block';
+            expenseFormSection.classList.add('hidden');
+            cameraSection.classList.remove('hidden');
+            startButton.classList.remove('hidden');
+            captureButton.classList.add('hidden');
+            amountInput.value = '';
+            dateInput.value = '';
+            scannedTextElement.value = '';
+        });
+
+        // 支出リストをリアルタイムで表示
+        function setupExpenseListener() {
+            if (!userId) {
+                return;
+            }
+            const collectionPath = `/artifacts/${appId}/users/${userId}/expenses`;
+            onSnapshot(collection(db, collectionPath), (snapshot) => {
+                expensesList.innerHTML = ''; // 既存のリストをクリア
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'expense-item';
+                    itemDiv.innerHTML = `
+                        <img src="${data.receiptImage}" alt="Receipt" class="w-16 h-16 object-cover rounded-md mr-4 shadow-sm">
+                        <div class="expense-details">
+                            <p class="font-bold text-lg">${data.amount.toLocaleString()}円</p>
+                            <p class="text-sm">カテゴリ: ${data.category}</p>
+                            <p class="text-sm">日付: ${data.date}</p>
+                        </div>
+                    `;
+                    expensesList.appendChild(itemDiv);
+                });
+            });
+        }
+        
+    </script>
+</body>
+</html>
